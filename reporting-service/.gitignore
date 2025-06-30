@@ -1,0 +1,57 @@
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# dotenv environment files
+.env
+.env.*
+
+# Coverage directory
+coverage/
+
+# Next.js or other build outputs
+.next/
+dist/
+build/
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# IDE settings
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Mac system files
+.DS_Store
+
+# Prisma migrations or generated folders (if you have)
+prisma/migrations/
+
+# Optional: Ignore local database
+*.sqlite
+
+# Optional: Ignore AWS or S3 credentials if you keep them locally
+.aws/
+
+# Optional: Ignore Docker files if generated
+*.dockerfile
+docker-compose.override.yml
