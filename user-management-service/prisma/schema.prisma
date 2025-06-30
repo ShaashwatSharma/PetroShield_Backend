@@ -7,7 +7,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Example {
-  id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+model Organization {
+  id          String     @id @default(uuid())
+  name        String
+  createdAt   DateTime   @default(now())
+}
+
+model DriverVehicleAssignment {
+  id             String     @id @default(uuid())
+  userId         String     // Keycloak user ID
+  vehicleId      String
+  organizationId String
+  assignedAt     DateTime   @default(now())
+  unassignedAt   DateTime?
 }

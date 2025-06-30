@@ -7,7 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Example {
+model NotificationLog {
   id        String   @id @default(uuid())
-  createdAt DateTime @default(now())
+  userId    String   // Keycloak user ID
+  message   String
+  sentAt    DateTime @default(now())
+  status    String
 }

@@ -1,17 +1,20 @@
+import express from 'express';
 import { PrismaClient } from '@prisma/client';
+
+const app = express();
 const prisma = new PrismaClient();
+app.use(express.json());
 
-async function main() {
-  console.log("reporting-service service running...");
-  // Example usage
-}
+app.get('/reports/fuel', async (_, res) => {
+  const logs = await prisma.fuelLog.findMany();
+  res.json(logs);
+});
 
-main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+app.get('/reports/theft', async (_, res) => {
+  const alerts = await prisma.theftAlert.findMany();
+  res.json(alerts);
+});
+
+app.listen(3004, () => {
+  console.log('reporting-service running on port 3004');
+});
