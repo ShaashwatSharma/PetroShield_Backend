@@ -1,4 +1,5 @@
 version: '3.9'
+
 services:
   db:
     image: postgres
@@ -6,115 +7,46 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: petroshield
+      POSTGRES_DB: defaultdb  # initial db; we will create others manually
     ports:
-      - "5433:5432"  # changed host port to 5433 to avoid conflict
+      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
 
   fuel-theft-service:
     build: ./fuel-theft-service
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
+      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_fuel_theft"
     depends_on:
       - db
 
   user-management-service:
     build: ./user-management-service
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
+      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_user_mgmt"
     depends_on:
       - db
 
   vehicle-service:
     build: ./vehicle-service
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
+      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_vehicle"
     depends_on:
       - db
 
   notification-service:
     build: ./notification-service
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
+      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_notification"
     depends_on:
       - db
 
   reporting-service:
     build: ./reporting-service
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
+      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_reporting"
     depends_on:
       - db
 
 volumes:
   db_data:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# version: '3.9'
-# services:
-#   db:
-#     image: postgres
-#     container_name: petroshield-db
-#     environment:
-#       POSTGRES_USER: user
-#       POSTGRES_PASSWORD: password
-#       POSTGRES_DB: petroshield
-#     ports:
-#       - "5432:5432"
-#     volumes:
-#       - db_data:/var/lib/postgresql/data
-
-#   fuel-theft-service:
-#     build: ./fuel-theft-service
-#     environment:
-#       DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
-#     depends_on:
-#       - db
-
-#   user-management-service:
-#     build: ./user-management-service
-#     environment:
-#       DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
-#     depends_on:
-#       - db
-
-#   vehicle-service:
-#     build: ./vehicle-service
-#     environment:
-#       DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
-#     depends_on:
-#       - db
-
-#   notification-service:
-#     build: ./notification-service
-#     environment:
-#       DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
-#     depends_on:
-#       - db
-
-#   reporting-service:
-#     build: ./reporting-service
-#     environment:
-#       DATABASE_URL: "postgresql://user:password@db:5432/petroshield"
-#     depends_on:
-#       - db
-
-# volumes:
-#   db_data:
