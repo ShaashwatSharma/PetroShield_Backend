@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id          String     @id @default(uuid())
+  name        String
+  createdAt   DateTime   @default(now())
+}
+
+model DriverVehicleAssignment {
+  id             String     @id @default(uuid())
+  userId         String     // Keycloak user ID
+  vehicleId      String
+  organizationId String
+  assignedAt     DateTime   @default(now())
+  unassignedAt   DateTime?
+}

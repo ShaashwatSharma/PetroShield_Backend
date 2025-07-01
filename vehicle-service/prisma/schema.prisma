@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicle {
+  id             String   @id @default(uuid())
+  registration   String   @unique
+  organizationId String
+  createdAt      DateTime @default(now())
+
+  sensor         Sensor?  @relation("VehicleSensor")
+}
+
+model Sensor {
+  id         String   @id @default(uuid())
+  sensorId   String   @unique
+  vehicleId  String   @unique
+  location   String?
+
+  vehicle    Vehicle  @relation("VehicleSensor", fields: [vehicleId], references: [id], onDelete: Cascade)
+}

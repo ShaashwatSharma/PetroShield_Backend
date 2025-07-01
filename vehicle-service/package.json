@@ -1,0 +1,19 @@
+{
+  "name": "vehicle-service",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "ts-node src/main.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.10.1",
+    "@types/express": "^5.0.3",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "prisma": "^6.10.1",
+    "ts-node": "^10.0.0",
+    "typescript": "^5.0.0"
+  }
+}
