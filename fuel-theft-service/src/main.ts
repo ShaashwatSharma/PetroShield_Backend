@@ -1,5 +1,5 @@
-import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import express, { Request, Response } from 'express';
+import { PrismaClient, TheftStatus } from '@prisma/client';
 import axios from 'axios';
 import mqtt from 'mqtt';
 
@@ -7,71 +7,81 @@ const app = express();
 const prisma = new PrismaClient();
 app.use(express.json());
 
-// Example API: save fuel log manually
-app.post('/fuel-log', async (req, res) => {
-  const { sensorId, vehicleId, fuelLevel, latitude, longitude } = req.body;
+app.post('/fuel-log', async (req: Request, res: Response) => {
+  const { sensorId, vehicleId, fuelLevel, latitude, longitude, userId } = req.body;
 
-  const log = await prisma.fuelLog.create({
-    data: { sensorId, vehicleId, fuelLevel, latitude, longitude }
-  });
-
-  // Check theft (very simple example logic)
-  if (fuelLevel < 10) {
-    // Save alert
-    await prisma.theftAlert.create({
-      data: {
-        vehicleId,
-        alertType: 'Low Fuel Theft',
-        status: 'Open'
-      }
+  try {
+    // Save fuel log
+    const log = await prisma.fuelLog.create({
+      data: { sensorId, vehicleId, fuelLevel, latitude, longitude, userId }
     });
 
-    // Notify notification-service
-    await axios.post('http://notification-service:3001/notify', {
-      vehicleId,
-      message: `Possible theft detected for vehicle ${vehicleId}`
-    });
+    // Check for possible theft
+    if (fuelLevel < 10) {
+      await prisma.theftAlert.create({
+        data: {
+          fuelLogId: log.id,
+          userId,
+          vehicleId,
+          status: TheftStatus.PENDING,
+          description: 'Possible theft detected: low fuel level'
+        }
+      });
+
+      // Notify
+      await axios.post('http://notification-service:3001/notify', {
+        userId,
+        message: `Possible theft detected for vehicle ${vehicleId}`,
+        status: 'SENT'
+      });
+    }
+
+    res.json(log);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create fuel log' });
   }
-
-  res.json(log);
 });
 
-// MQTT integration
-const mqttClient = mqtt.connect('mqtt://mqtt-broker-url'); // or your broker
+// MQTT Setup
+const mqttClient = mqtt.connect('mqtt://mqtt-broker-url'); // Replace with actual broker URL
+
 mqttClient.on('connect', () => {
   console.log('Connected to MQTT broker');
-  mqttClient.subscribe('petroshield/fuel');
+  mqttClient.subscribe('petroshield/fuel', (err) => {
+    if (!err) {
+      console.log('Subscribed to topic: petroshield/fuel');
+    }
+  });
 });
 
-mqttClient.on('message', async (topic, message) => {
+mqttClient.on('message', async (topic: string, message: Buffer) => {
   try {
     const data = JSON.parse(message.toString());
     console.log('Received MQTT fuel data:', data);
 
-    // Save log
-    await prisma.fuelLog.create({
-      data: {
-        sensorId: data.sensorId,
-        vehicleId: data.vehicleId,
-        fuelLevel: data.fuelLevel,
-        latitude: data.latitude,
-        longitude: data.longitude
-      }
+    const { sensorId, vehicleId, fuelLevel, latitude, longitude, userId } = data;
+
+    // Save fuel log
+    const log = await prisma.fuelLog.create({
+      data: { sensorId, vehicleId, fuelLevel, latitude, longitude, userId }
     });
 
-    // Example theft detection
-    if (data.fuelLevel < 10) {
+    if (fuelLevel < 10) {
       await prisma.theftAlert.create({
         data: {
-          vehicleId: data.vehicleId,
-          alertType: 'Low Fuel Theft',
-          status: 'Open'
+          fuelLogId: log.id,
+          userId,
+          vehicleId,
+          status: TheftStatus.PENDING,
+          description: 'Possible theft detected: low fuel level'
         }
       });
 
       await axios.post('http://notification-service:3001/notify', {
-        vehicleId: data.vehicleId,
-        message: `Possible theft detected for vehicle ${data.vehicleId}`
+        userId,
+        message: `Possible theft detected for vehicle ${vehicleId}`,
+        status: 'SENT'
       });
     }
   } catch (err) {

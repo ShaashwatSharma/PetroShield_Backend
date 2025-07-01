@@ -6,7 +6,10 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@prisma/client": "^6.10.1"
+    "@prisma/client": "^6.10.1",
+    "@types/express": "^5.0.3",
+    "axios": "^1.10.0",
+    "express": "^5.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

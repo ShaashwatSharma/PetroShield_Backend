@@ -15,36 +15,46 @@ services:
 
   fuel-theft-service:
     build: ./fuel-theft-service
+    ports:
+      - "3000:3000" # Host port 3000 → container port 3000
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_fuel_theft"
+      DATABASE_URL: "postgresql://user:password@db:5432/fuel_theft_db"
     depends_on:
       - db
 
   user-management-service:
     build: ./user-management-service
+    ports:
+      - "3001:3000" # Host port 3001 → container port 3000
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_user_mgmt"
+      DATABASE_URL: "postgresql://user:password@db:5432/user_management_db"
     depends_on:
       - db
 
   vehicle-service:
     build: ./vehicle-service
+    ports:
+      - "3002:3000" # Host port 3002 → container port 3000
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_vehicle"
+      DATABASE_URL: "postgresql://user:password@db:5432/vehicle_db"
     depends_on:
       - db
 
   notification-service:
     build: ./notification-service
+    ports:
+      - "3003:3000" # Host port 3003 → container port 3000
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_notification"
+      DATABASE_URL: "postgresql://user:password@db:5432/notification_db"
     depends_on:
       - db
 
   reporting-service:
     build: ./reporting-service
+    ports:
+      - "3004:3000" # Host port 3004 → container port 3000
     environment:
-      DATABASE_URL: "postgresql://user:password@db:5432/petroshield_reporting"
+      DATABASE_URL: "postgresql://user:password@db:5432/reporting_db"
     depends_on:
       - db
 

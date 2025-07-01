@@ -6,18 +6,33 @@ const prisma = new PrismaClient();
 app.use(express.json());
 
 app.post('/vehicles', async (req, res) => {
-  const { name, number } = req.body;
-  const vehicle = await prisma.vehicle.create({
-    data: { name, number }
-  });
-  res.json(vehicle);
+  try {
+    const { registration, organizationId } = req.body;
+
+    const vehicle = await prisma.vehicle.create({
+      data: {
+        registration,
+        organizationId,
+      },
+    });
+
+    res.json(vehicle);
+  } catch (error) {
+    console.error('Error creating vehicle:', error);
+    res.status(500).json({ error: 'Failed to create vehicle' });
+  }
 });
 
 app.get('/vehicles', async (_, res) => {
-  const vehicles = await prisma.vehicle.findMany();
-  res.json(vehicles);
+  try {
+    const vehicles = await prisma.vehicle.findMany();
+    res.json(vehicles);
+  } catch (error) {
+    console.error('Error fetching vehicles:', error);
+    res.status(500).json({ error: 'Failed to fetch vehicles' });
+  }
 });
 
-app.listen(3002, () => {
-  console.log('vehicle-service running on port 3002');
+app.listen(3000, () => {
+  console.log('vehicle-service running on port 3000');
 });
