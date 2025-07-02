@@ -202,5 +202,5 @@ app.post('/alerts/reject/:id', async (req, res) => {
 /** ---------------------- START SERVER --------------------- */
 
 app.listen(3000, () => {
-  console.log('fuel-theft-service running on port 3000');
+  console.log('fuel-theft-service running on port 3000 or 3000 on Host');
 });

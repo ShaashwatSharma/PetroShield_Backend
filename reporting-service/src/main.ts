@@ -60,5 +60,5 @@ app.get('/reports/driver/:driverId', async (req, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('reporting-service running on port 3000');
+  console.log('reporting-service running on port 3000 or 3004 on Host');
 });
