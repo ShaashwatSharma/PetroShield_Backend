@@ -2,16 +2,10 @@
   "name": "fuel-theft-service",
   "version": "1.0.0",
   "scripts": {
-<<<<<<< HEAD
   "dev": "ts-node src/main.ts",
   "build": "tsc",
   "start": "node dist/main.js"
 },
-=======
-    "dev": "ts-node src/main.ts",
-    "build": "tsc"
-  },
->>>>>>> origin/branchone
   "dependencies": {
     "@prisma/client": "^6.10.1",
     "axios": "^1.6.8",
