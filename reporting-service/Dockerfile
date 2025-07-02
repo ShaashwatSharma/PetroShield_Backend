@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # FROM node:20
 
 # WORKDIR /app
@@ -20,8 +19,6 @@
 
 
 
-=======
->>>>>>> origin/branchone
 FROM node:20
 
 WORKDIR /app

@@ -20,10 +20,6 @@ async function getAdminToken() {
   return response.data.access_token;
 }
 
-<<<<<<< HEAD
-=======
-
->>>>>>> origin/branchone
 // Example route to fetch all users from Keycloak
 app.get('/users', async (_, res) => {
   try {
@@ -62,9 +58,5 @@ app.get('/users/:id', async (req, res) => {
 });
 
 app.listen(3000, () => {
-<<<<<<< HEAD
   console.log('user-management-service running on port 3000 or 3001 on Host');
-=======
-  console.log('user-management-service running on port 3000');
->>>>>>> origin/branchone
 });
