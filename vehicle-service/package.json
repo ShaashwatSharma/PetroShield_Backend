@@ -8,6 +8,7 @@
   "dependencies": {
     "@prisma/client": "^6.10.1",
     "@types/express": "^5.0.3",
+    "expre": "^0.1.1",
     "express": "^5.1.0"
   },
   "devDependencies": {
