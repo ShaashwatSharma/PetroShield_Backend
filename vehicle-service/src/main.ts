@@ -3,11 +3,15 @@ import app from './app';
 
 const PORT = process.env.PORT || 3003;
 
-app.listen(PORT, () => {
-  console.log(`Vehicle Management Service is running on port ${PORT}`);
+// app.listen(PORT, () => {
+//   console.log(`Vehicle Management Service is running on port ${PORT}`);
+// });
+
+
+
+app.listen(3000, () => {
+  console.log('vehicle-service running on port 3000');
 });
-
-
 
 
 

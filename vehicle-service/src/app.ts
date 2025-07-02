@@ -6,4 +6,5 @@ app.use(express.json());
 
 app.use('/vehicles', vehicleRoutes);
 
+
 export default app;

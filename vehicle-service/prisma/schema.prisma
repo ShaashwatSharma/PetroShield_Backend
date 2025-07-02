@@ -11,6 +11,8 @@ model Vehicle {
   id             String   @id @default(uuid())
   registration   String   @unique
   organizationId String
+  driverId       String?  
+  managerId      String? 
   createdAt      DateTime @default(now())
 
   sensor         Sensor?  @relation("VehicleSensor")

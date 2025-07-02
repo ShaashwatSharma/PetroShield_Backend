@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "ts-node src/main.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "start": "node dist/main.js"
+
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",
