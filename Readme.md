@@ -104,6 +104,39 @@ MQTT_BROKER_URL=mqtt://broker:1883
 
 ---
 
+### 🗄️ Database Setup (PostgreSQL)
+
+#### 1️⃣ Start PostgreSQL
+
+```bash
+docker run --name petroshield-postgres -e POSTGRES_PASSWORD=yourpassword -e POSTGRES_USER=youruser -e POSTGRES_DB=yourdb -p 5432:5432 -d postgres
+```
+
+Or use the included `docker-compose.yml` if defined.
+
+#### 2️⃣ Configure `.env`
+
+Check and update each service’s `.env` file with the correct database URL.
+
+#### 3️⃣ Run Prisma Migrations
+
+```bash
+npx prisma migrate dev --name init
+```
+
+#### 4️⃣ Generate Prisma Client
+
+```bash
+npx prisma generate
+```
+
+#### 5️⃣ Verify
+
+Check DB tables using tools like pgAdmin or TablePlus.
+
+---
+
+
 ### 6️⃣ Build & start services
 
 ```bash
@@ -116,6 +149,21 @@ Services will start on ports:
 - 3002 → Vehicle Service  
 - 3003 → Notification Service  
 - 3004 → Reporting Service
+
+---
+## 📡 MQTT Setup
+
+Start Mosquitto broker (example):
+
+```bash
+docker run -it -p 1883:1883 -p 9001:9001 eclipse-mosquitto
+```
+
+Update your `.env`:
+
+```env
+MQTT_BROKER_URL=mqtt://localhost:1883
+```
 
 ---
 
@@ -154,6 +202,14 @@ npm run dev
 ```
 
 ---
+## ⚡ How it works
+
+* IoT devices (sensors) send real-time fuel data via MQTT → Fuel & Theft Detection Service.
+* Service saves logs to DB and runs ML anomaly detection to flag theft events.
+* Alerts are pushed to Notification Service.
+* Data is analyzed and available in Reporting Service dashboards.
+
+---
 
 ## 🛡️ Security
 
@@ -164,15 +220,8 @@ npm run dev
 
 ---
 
-## 💬 Contributing
-
-Pull requests and feedback are welcome! Please open an issue first to discuss what you’d like to change.
-
----
-
 ## 🖖 Authors
 
-- Shaashwat Sharma (https://github.com/shaashwatsharma)
+- [Shaashwat Sharma](https://github.com/shaashwatsharma)
 
 ---
-
