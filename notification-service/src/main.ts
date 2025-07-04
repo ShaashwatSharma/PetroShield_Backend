@@ -36,5 +36,5 @@ app.get('/notify', async (_, res) => {
 });
 
 app.listen(3000, () => {
-  console.log('notification-service running on port 3000');
+  console.log('notification-service running on port 3000 or 3003 on Host');
 });

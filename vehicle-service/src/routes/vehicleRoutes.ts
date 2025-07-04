@@ -6,8 +6,11 @@ import {registerVehicle,getVehicleById,generateVehiclesPDF,getAllVehicles,update
 
 // const router: Router = express.Router(); 
 
+const router: Router = express.Router(); 
 
-const router = express.Router();
+router.post('/', registerVehicle);
+router.get('/', getAllVehicles);
+// router.get('/:id', getVehicleById);
 
 
 
