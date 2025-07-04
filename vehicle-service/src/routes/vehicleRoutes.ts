@@ -1,7 +1,7 @@
-// import express, { Router } from 'express';
+import{ Router } from 'express';
 import express from 'express';
 
-import {registerVehicle,getVehicleById,generateVehiclesPDF,getAllVehicles,updateVehicle,deleteVehicle,assignDriver,getVehiclesByDriver,getVehiclesByManager} from '../controllers/vehicleController';
+import {registerVehicle,getVehicleById,generateVehiclesPDF,getAllVehicles,updateVehicle,deleteVehicle,assignDriver,getVehiclesByDriver,getVehiclesByManager} from './vehicleController';
 
 
 // const router: Router = express.Router(); 
