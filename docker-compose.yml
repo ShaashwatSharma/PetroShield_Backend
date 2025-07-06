@@ -13,50 +13,145 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2.5
+    container_name: petroshield-keycloak
+    command:
+      - start-dev
+      - --http-port=8080
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db:5432/defaultdb
+      KC_DB_USERNAME: user
+      KC_DB_PASSWORD: password
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+
   fuel-theft-service:
     build: ./fuel-theft-service
     ports:
-      - "3000:3000" # Host port 3000 → container port 3000
+      - "3000:3000"
     environment:
       DATABASE_URL: "postgresql://user:password@db:5432/fuel_theft_db"
     depends_on:
       - db
+      - keycloak
 
   user-management-service:
     build: ./user-management-service
     ports:
-      - "3001:3000" # Host port 3001 → container port 3000
+      - "3001:3000"
     environment:
       DATABASE_URL: "postgresql://user:password@db:5432/user_management_db"
     depends_on:
       - db
+      - keycloak
 
   vehicle-service:
     build: ./vehicle-service
     ports:
-      - "3002:3000" # Host port 3002 → container port 3000
+      - "3002:3000"
     environment:
       DATABASE_URL: "postgresql://user:password@db:5432/vehicle_db"
     depends_on:
       - db
+      - keycloak
 
   notification-service:
     build: ./notification-service
     ports:
-      - "3003:3000" # Host port 3003 → container port 3000
+      - "3003:3000"
     environment:
       DATABASE_URL: "postgresql://user:password@db:5432/notification_db"
     depends_on:
       - db
+      - keycloak
 
   reporting-service:
     build: ./reporting-service
     ports:
-      - "3004:3000" # Host port 3004 → container port 3000
+      - "3004:3000"
     environment:
       DATABASE_URL: "postgresql://user:password@db:5432/reporting_db"
     depends_on:
       - db
+      - keycloak
 
 volumes:
   db_data:
+  keycloak_data:
+
+
+
+
+
+
+
+# version: '3.9'
+
+# services:
+#   db:
+#     image: postgres
+#     container_name: petroshield-db
+#     environment:
+#       POSTGRES_USER: user
+#       POSTGRES_PASSWORD: password
+#       POSTGRES_DB: defaultdb  # initial db; we will create others manually
+#     ports:
+#       - "5433:5432"
+#     volumes:
+#       - db_data:/var/lib/postgresql/data
+
+#   fuel-theft-service:
+#     build: ./fuel-theft-service
+#     ports:
+#       - "3000:3000" # Host port 3000 → container port 3000
+#     environment:
+#       DATABASE_URL: "postgresql://user:password@db:5432/fuel_theft_db"
+#     depends_on:
+#       - db
+
+#   user-management-service:
+#     build: ./user-management-service
+#     ports:
+#       - "3001:3000" # Host port 3001 → container port 3000
+#     environment:
+#       DATABASE_URL: "postgresql://user:password@db:5432/user_management_db"
+#     depends_on:
+#       - db
+
+#   vehicle-service:
+#     build: ./vehicle-service
+#     ports:
+#       - "3002:3000" # Host port 3002 → container port 3000
+#     environment:
+#       DATABASE_URL: "postgresql://user:password@db:5432/vehicle_db"
+#     depends_on:
+#       - db
+
+#   notification-service:
+#     build: ./notification-service
+#     ports:
+#       - "3003:3000" # Host port 3003 → container port 3000
+#     environment:
+#       DATABASE_URL: "postgresql://user:password@db:5432/notification_db"
+#     depends_on:
+#       - db
+
+#   reporting-service:
+#     build: ./reporting-service
+#     ports:
+#       - "3004:3000" # Host port 3004 → container port 3000
+#     environment:
+#       DATABASE_URL: "postgresql://user:password@db:5432/reporting_db"
+#     depends_on:
+#       - db
+
+# volumes:
+#   db_data:
