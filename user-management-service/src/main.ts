@@ -1,20 +1,31 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import axios from 'axios';
 import dotenv from 'dotenv';
+import { jwtDecode } from 'jwt-decode';
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
 
-const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL!; // e.g., http://petroshield-keycloak:8080
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!;       // e.g., myrealm
-const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!; // e.g., myclient
-const KEYCLOAK_CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET!; // e.g., xyz
+interface KeycloakDecodedToken {
+  realm_access?: {
+    roles: string[];
+  };
+  groups?: string[];
+  preferred_username?: string;
+  sub?: string;
+  [key: string]: any;
+}
+
+const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL!;
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!;
+const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!;
+const KEYCLOAK_CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET!;
 
 const KEYCLOAK_ADMIN_API_URL = `${KEYCLOAK_BASE_URL}/admin/realms/${KEYCLOAK_REALM}`;
 
-async function getAdminToken() {
+async function getAdminToken(): Promise<string> {
   const params = new URLSearchParams();
   params.append('grant_type', 'client_credentials');
   params.append('client_id', KEYCLOAK_CLIENT_ID);
@@ -29,40 +40,324 @@ async function getAdminToken() {
   return response.data.access_token;
 }
 
-// ✅ Route to get all users
-app.get('/users', async (_req, res) => {
+const checkRole = (requiredRoles: string[]) => {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        res.status(401).json({ error: 'No token provided' });
+        return;
+      }
+
+      const token = authHeader.split(' ')[1];
+      const decoded = jwtDecode<KeycloakDecodedToken>(token);
+
+      const roles = decoded.realm_access?.roles || [];
+      const groups = decoded.groups || [];
+
+      console.log(`Decoded roles: ${roles}`);
+      console.log(`Decoded groups: ${groups}`);
+
+      const hasRole = requiredRoles.some(role => roles.includes(role));
+      if (!hasRole) {
+        res.status(403).json({ error: 'Forbidden: insufficient role' });
+        return;
+      }
+
+      (req as any).user = decoded;
+      next();
+    } catch (err) {
+      console.error('Token decode error:', err);
+      res.status(401).json({ error: 'Invalid token' });
+    }
+  };
+};
+
+async function getOrCreateGroup(groupPath: string, adminToken: string): Promise<string> {
+  const parts = groupPath.split('/').filter(Boolean);
+
+  let parentId: string | undefined = undefined;
+  let currentPath = '';
+
+  for (let i = 0; i < parts.length; i++) {
+    const currentName = parts[i];
+    currentPath = currentPath + '/' + currentName;
+
+    let childrenGroups: any[] = [];
+
+    if (parentId) {
+      // Get children of current parent
+      const childrenResp = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/groups/${parentId}/children`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      childrenGroups = childrenResp.data;
+    } else {
+      // Get top-level groups
+      const topResp = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/groups`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      childrenGroups = topResp.data;
+    }
+
+    let existingGroup = childrenGroups.find((g: any) => g.name === currentName);
+
+    if (!existingGroup) {
+      // Create this group under parent
+      if (parentId) {
+        await axios.post(
+          `${KEYCLOAK_ADMIN_API_URL}/groups/${parentId}/children`,
+          { name: currentName },
+          { headers: { Authorization: `Bearer ${adminToken}` } }
+        );
+      } else {
+        await axios.post(
+          `${KEYCLOAK_ADMIN_API_URL}/groups`,
+          { name: currentName },
+          { headers: { Authorization: `Bearer ${adminToken}` } }
+        );
+      }
+
+      // Re-fetch children after creating
+      if (parentId) {
+        const updatedChildrenResp = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/groups/${parentId}/children`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        childrenGroups = updatedChildrenResp.data;
+      } else {
+        const updatedTopResp = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/groups`, {
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        childrenGroups = updatedTopResp.data;
+      }
+
+      existingGroup = childrenGroups.find((g: any) => g.name === currentName);
+
+      if (!existingGroup) {
+        throw new Error(`Could not find group after creating it: ${currentPath}`);
+      }
+    }
+
+    parentId = existingGroup.id;
+  }
+
+  return parentId!;
+}
+
+
+
+
+async function getRoleByName(roleName: string, adminToken: string) {
+  const rolesResponse = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/roles/${roleName}`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  return rolesResponse.data;
+}
+
+async function assignRoleToUser(userId: string, role: any, adminToken: string) {
+  await axios.post(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}/role-mappings/realm`, [role], {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+}
+
+async function createUser(username: string, password: string, adminToken: string): Promise<string> {
+  const userResp = await axios.post(
+    `${KEYCLOAK_ADMIN_API_URL}/users`,
+    {
+      username,
+      email: username, // email = username as per your request
+      enabled: true,
+      credentials: [{ type: 'password', value: password, temporary: false }],
+    },
+    { headers: { Authorization: `Bearer ${adminToken}` } }
+  );
+  return userResp.headers.location.split('/').pop();
+}
+
+// ---------------------------- CREATE ENDPOINTS ----------------------------
+
+// Create Super_Admin
+app.post('/create-super-admin', checkRole(['Super_Admin']), async (req: Request, res: Response) => {
   try {
-    const token = await getAdminToken();
+    const { username, password } = req.body;
+    const adminToken = await getAdminToken();
 
-    const response = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+    const userId = await createUser(username, password, adminToken);
+    const role = await getRoleByName('Super_Admin', adminToken);
+    await assignRoleToUser(userId, role, adminToken);
 
-    res.json(response.data);
+    res.json({ message: 'Super_Admin created successfully', userId });
   } catch (error: any) {
-    console.error('Error fetching users from Keycloak:', error?.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to fetch users from Keycloak' });
+    console.error('Error creating super admin:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to create super admin' });
   }
 });
 
-// ✅ Route to get a single user
-app.get('/users/:id', async (req, res) => {
+// Create Admin (only Super_Admin)
+app.post('/create-admin', checkRole(['Super_Admin']), async (req: Request, res: Response) => {
   try {
-    const token = await getAdminToken();
+    const { username, password, org } = req.body;
+    const adminToken = await getAdminToken();
+
+    const userId = await createUser(username, password, adminToken);
+
+    const orgGroupPath = `/${org}/Admin`;
+    const groupId = await getOrCreateGroup(orgGroupPath, adminToken);
+
+    await axios.put(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}/groups/${groupId}`, {}, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    const role = await getRoleByName('Admin', adminToken);
+    await assignRoleToUser(userId, role, adminToken);
+
+    res.json({ message: 'Admin created successfully', userId });
+  } catch (error: any) {
+    console.error('Error creating admin:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to create admin' });
+  }
+});
+
+// Create Manager (Super_Admin & Admin)
+app.post('/create-manager', checkRole(['Super_Admin', 'Admin']), async (req: Request, res: Response) => {
+  try {
+    const { username, password, org, adminGroup } = req.body;
+    const adminToken = await getAdminToken();
+
+    const userId = await createUser(username, password, adminToken);
+
+    const groupPath = `/${org}/Admin/${adminGroup}/Manager`;
+    const groupId = await getOrCreateGroup(groupPath, adminToken);
+
+    await axios.put(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}/groups/${groupId}`, {}, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    const role = await getRoleByName('Manager', adminToken);
+    await assignRoleToUser(userId, role, adminToken);
+
+    res.json({ message: 'Manager created successfully', userId });
+  } catch (error: any) {
+    console.error('Error creating manager:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to create manager' });
+  }
+});
+
+// Create Driver (Super_Admin & Admin)
+app.post('/create-driver', checkRole(['Super_Admin', 'Admin']), async (req: Request, res: Response) => {
+  try {
+    const { username, password, org, adminGroup, managerGroup } = req.body;
+    const adminToken = await getAdminToken();
+
+    const userId = await createUser(username, password, adminToken);
+
+    const groupPath = `/${org}/Admin/${adminGroup}/Manager/${managerGroup}/Driver`;
+    const groupId = await getOrCreateGroup(groupPath, adminToken);
+
+    await axios.put(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}/groups/${groupId}`, {}, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    const role = await getRoleByName('Driver', adminToken);
+    await assignRoleToUser(userId, role, adminToken);
+
+    res.json({ message: 'Driver created successfully', userId });
+  } catch (error: any) {
+    console.error('Error creating driver:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to create driver' });
+  }
+});
+
+// -------------------------- USER FETCH/DELETE --------------------------
+
+app.get('/users', checkRole(['Super_Admin', 'Admin', 'Manager', 'Driver']), async (req: Request, res: Response) => {
+  try {
+    const adminToken = await getAdminToken();
+    const kcUser = (req as any).user as KeycloakDecodedToken;
+    const userRoles = kcUser.realm_access?.roles || [];
+    const userGroups = kcUser.groups || [];
+    const username = kcUser.preferred_username;
+
+    const response = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+    let users: any[] = response.data;
+
+    for (const user of users) {
+      const groupsResponse = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users/${user.id}/groups`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      user.groups = groupsResponse.data.map((g: any) => g.path);
+    }
+
+    if (userRoles.includes('Super_Admin')) {
+      res.json(users);
+      return;
+    }
+
+    if (userRoles.includes('Admin')) {
+      const orgGroup = userGroups.find(g => g.includes('/Org'));
+      if (orgGroup) {
+        users = users.filter(u => (u.groups || []).some((g: string) => g.startsWith(orgGroup)));
+        res.json(users);
+        return;
+      }
+    }
+
+    if (userRoles.includes('Manager')) {
+      const managerGroup = userGroups.find(g => g.includes('/Manager'));
+      if (managerGroup) {
+        const managerSelf = users.find(u => u.id === kcUser.sub);
+        const driverUsers = users.filter(u =>
+          (u.groups || []).some((g: string) => g.startsWith(`${managerGroup}/Driver`))
+        );
+        const finalUsers = [managerSelf, ...driverUsers].filter(Boolean);
+        res.json(finalUsers);
+        return;
+      }
+    }
+
+    if (userRoles.includes('Driver') && username) {
+      users = users.filter(u => u.username === username);
+      res.json(users);
+      return;
+    }
+
+    res.status(403).json({ error: 'Forbidden: Cannot determine visibility rules' });
+  } catch (error: any) {
+    console.error('Error fetching users:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+app.get('/users/:id', checkRole(['Super_Admin', 'Admin', 'Manager', 'Driver']), async (req: Request, res: Response) => {
+  try {
+    const adminToken = await getAdminToken();
     const userId = req.params.id;
 
     const response = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { Authorization: `Bearer ${adminToken}` },
     });
 
     res.json(response.data);
   } catch (error: any) {
-    console.error('Error fetching user from Keycloak:', error?.response?.data || error.message);
-    res.status(500).json({ error: 'Failed to fetch user from Keycloak' });
+    console.error('Error fetching user:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+app.delete('/users/:id', checkRole(['Super_Admin']), async (req: Request, res: Response) => {
+  try {
+    const adminToken = await getAdminToken();
+    const userId = req.params.id;
+
+    await axios.delete(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error: any) {
+    console.error('Error deleting user:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 
@@ -70,6 +365,297 @@ const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`✅ user-management-service running on port ${PORT} or 3001 on Host`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import express, { Request, Response, NextFunction } from 'express';
+// import axios from 'axios';
+// import dotenv from 'dotenv';
+// import {jwtDecode} from 'jwt-decode';
+// // If using CommonJS, use: const jwt_decode = require('jwt-decode').default;
+
+// dotenv.config();
+
+// const app = express();
+// app.use(express.json());
+
+
+// interface KeycloakDecodedToken {
+//   realm_access?: {
+//     roles: string[];
+//   };
+//   groups?: string[];
+//   sub?: string;
+//   preferred_username?: string;
+//   [key: string]: any;
+// }
+
+// const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL!;
+// const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!;
+// const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!;
+// const KEYCLOAK_CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET!;
+
+// const KEYCLOAK_ADMIN_API_URL = `${KEYCLOAK_BASE_URL}/admin/realms/${KEYCLOAK_REALM}`;
+
+// async function getAdminToken(): Promise<string> {
+//   const params = new URLSearchParams();
+//   params.append('grant_type', 'client_credentials');
+//   params.append('client_id', KEYCLOAK_CLIENT_ID);
+//   params.append('client_secret', KEYCLOAK_CLIENT_SECRET);
+
+//   const response = await axios.post(
+//     `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+//     params,
+//     { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+//   );
+
+//   return response.data.access_token;
+// }
+
+// const checkRole = (requiredRoles: string[]) => {
+//   return (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       const authHeader = req.headers.authorization;
+//       if (!authHeader) {
+//         res.status(401).json({ error: 'No token provided' });
+//         return;
+//       }
+
+//       const token = authHeader.split(' ')[1];
+//       const decoded = jwtDecode<KeycloakDecodedToken>(token);
+//       // const decoded = jwt_decode(token);
+//                       console.log(`Decoded token: ${JSON.stringify(decoded)}`); // Debugging line
+    
+      // const roles = decoded.realm_access?.roles || [];
+                      // console.log(`User roles: ${roles}`); // Debugging line
+//       const groups = decoded.groups || [];
+//                       console.log(groups); // Debugging line
+
+//       const hasRole = requiredRoles.some(role => roles.includes(role));
+//       if (!hasRole) {
+//         console.log(`Found: ${roles}`);
+//         res.status(403).json({ error: 'Forbidden: insufficient role' });
+//         return;
+//       }
+
+//       console.log(`User roles: ${roles}`);
+//       console.log(`Decoded token: ${JSON.stringify(decoded)}`);
+
+//       (req as any).user = decoded;
+//       next();
+//     } catch (err) {
+//       res.status(401).json({ error: 'Invalid token' });
+//       return;
+//     }
+//   };
+// };
+
+// app.get('/users', checkRole(['Super_Admin', 'Admin']), async (_req: Request, res: Response) => {
+//   try {
+//     const token = await getAdminToken();
+
+//     const response = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users`, {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     res.json(response.data);
+//   } catch (error: any) {
+//     console.error('Error fetching users from Keycloak:', error?.response?.data || error.message);
+//     res.status(500).json({ error: 'Failed to fetch users from Keycloak' });
+//   }
+// });
+
+// app.get('/users/:id', checkRole(['Super_Admin', 'Admin', 'Manager']), async (req: Request, res: Response) => {
+//   try {
+//     const token = await getAdminToken();
+//     const userId = req.params.id;
+
+//     const response = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}`, {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     res.json(response.data);
+//   } catch (error: any) {
+//     console.error('Error fetching user from Keycloak:', error?.response?.data || error.message);
+//     res.status(500).json({ error: 'Failed to fetch user from Keycloak' });
+//   }
+// });
+
+// app.delete('/users/:id', checkRole(['Super_Admin']), async (req: Request, res: Response) => {
+//   try {
+//     const token = await getAdminToken();
+//     const userId = req.params.id;
+
+//     await axios.delete(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}`, {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     res.json({ message: 'User deleted successfully' });
+//   } catch (error: any) {
+//     console.error('Error deleting user from Keycloak:', error?.response?.data || error.message);
+//     res.status(500).json({ error: 'Failed to delete user from Keycloak' });
+//   }
+// });
+
+// const PORT = 3000;
+// app.listen(PORT, () => {
+//   console.log(`✅ user-management-service running on port ${PORT} or 3001 on Host`);
+// });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// import express from 'express';
+// import axios from 'axios';
+// import dotenv from 'dotenv';
+
+// dotenv.config();
+
+// const app = express();
+// app.use(express.json());
+
+// const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL!; // e.g., http://petroshield-keycloak:8080
+// const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM!;       // e.g., myrealm
+// const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID!; // e.g., myclient
+// const KEYCLOAK_CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET!; // e.g., xyz
+
+// const KEYCLOAK_ADMIN_API_URL = `${KEYCLOAK_BASE_URL}/admin/realms/${KEYCLOAK_REALM}`;
+
+// async function getAdminToken() {
+//   const params = new URLSearchParams();
+//   params.append('grant_type', 'client_credentials');
+//   params.append('client_id', KEYCLOAK_CLIENT_ID);
+//   params.append('client_secret', KEYCLOAK_CLIENT_SECRET);
+
+//   const response = await axios.post(
+//     `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`,
+//     params,
+//     { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+//   );
+
+//   return response.data.access_token;
+// }
+
+// // ✅ Route to get all users
+// app.get('/users', async (_req, res) => {
+//   try {
+//     const token = await getAdminToken();
+
+//     const response = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users`, {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     res.json(response.data);
+//   } catch (error: any) {
+//     console.error('Error fetching users from Keycloak:', error?.response?.data || error.message);
+//     res.status(500).json({ error: 'Failed to fetch users from Keycloak' });
+//   }
+// });
+
+// // ✅ Route to get a single user
+// app.get('/users/:id', async (req, res) => {
+//   try {
+//     const token = await getAdminToken();
+//     const userId = req.params.id;
+
+//     const response = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}`, {
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//     });
+
+//     res.json(response.data);
+//   } catch (error: any) {
+//     console.error('Error fetching user from Keycloak:', error?.response?.data || error.message);
+//     res.status(500).json({ error: 'Failed to fetch user from Keycloak' });
+//   }
+// });
+
+// const PORT = 3000;
+// app.listen(PORT, () => {
+//   console.log(`✅ user-management-service running on port ${PORT} or 3001 on Host`);
+// });
 
 
 

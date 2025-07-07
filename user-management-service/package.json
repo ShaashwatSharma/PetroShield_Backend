@@ -1,23 +1,23 @@
 {
   "name": "user-management-service",
   "version": "1.0.0",
-  "main": "src/main.ts",
+  "main": "dist/main.js",
   "scripts": {
     "dev": "ts-node src/main.ts",
     "build": "tsc"
   },
   "dependencies": {
-    "@prisma/client": "^6.10.1",
-    "@types/express": "^5.0.3",
+    "@prisma/client": "^6.11.0",
     "axios": "^1.10.0",
     "dotenv": "^17.0.1",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "jwt-decode": "^4.0.0"
   },
   "devDependencies": {
-    "@prisma/client": "^6.11.0",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/jwt-decode": "^2.2.1",
     "@types/node": "^20.19.4",
     "prisma": "^6.11.0",
     "ts-node": "^10.9.2",
