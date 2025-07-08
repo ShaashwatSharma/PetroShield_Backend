@@ -15,11 +15,14 @@
     "jwt-decode": "^4.0.0"
   },
   "devDependencies": {
+    "@prisma/client": "^6.11.1",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/jwt-decode": "^2.2.1",
     "@types/node": "^20.19.4",
-    "prisma": "^6.11.0",
+    "i": "^0.3.7",
+    "npm": "^11.4.2",
+    "prisma": "^6.11.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   }
