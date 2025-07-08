@@ -445,7 +445,6 @@ app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Reques
       // Super_Admin can delete any user directly
       await deleteUser(userId, adminToken);
       res.json({ message: 'User deleted successfully by Super_Admin' });
-      return;
     }
 
     if (requesterRoles.includes('Admin')) {
@@ -458,6 +457,12 @@ app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Reques
 
       if (!targetOrg) {
         res.status(400).json({ error: 'Target user has no org group' });
+        return;
+      }
+
+      // Ensure requesterId is defined
+      if (!requesterId) {
+        res.status(400).json({ error: 'Requester ID is missing' });
         return;
       }
 
