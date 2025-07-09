@@ -5,16 +5,18 @@
     "dev": "ts-node src/main.ts",
     "build": "tsc",
     "start": "node dist/main.js"
-
   },
   "dependencies": {
-    "@prisma/client": "^6.10.1",
+    "@prisma/client": "^6.11.1",
     "@types/express": "^5.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.1.0",
     "express": "^5.1.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
     "@types/node": "^20.0.0",
-    "prisma": "^6.10.1",
+    "prisma": "^6.11.1",
     "ts-node": "^10.0.0",
     "typescript": "^5.0.0"
   }

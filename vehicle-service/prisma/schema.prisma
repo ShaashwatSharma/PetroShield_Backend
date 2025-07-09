@@ -8,21 +8,20 @@ datasource db {
 }
 
 model Vehicle {
-  id             String   @id @default(uuid())
-  registration   String   @unique
-  organizationId String
-  driverId       String?  
-  managerId      String? 
-  createdAt      DateTime @default(now())
-
-  sensor         Sensor?  @relation("VehicleSensor")
+  id                String   @id @default(uuid())
+  name              String
+  model             String?
+  registrationNumber String?
+  driverKcId        String? 
+  managerKcId       String?
+  sensors           Sensor[]
 }
 
 model Sensor {
-  id         String   @id @default(uuid())
-  sensorId   String   @unique
-  vehicleId  String   @unique
-  location   String?
-
-  vehicle    Vehicle  @relation("VehicleSensor", fields: [vehicleId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  name        String
+  type        String?
+  description String?
+  vehicleId   String?
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id])
 }

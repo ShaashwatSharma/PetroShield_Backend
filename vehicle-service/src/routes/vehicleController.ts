@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
+
+
 // GET /vehicles/:id
 export const getVehicleById = async (req: Request, res: Response) => {
   try {
@@ -13,7 +15,6 @@ export const getVehicleById = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error fetching vehicle' });
   }
 };
-
 // POST /vehicles
 export const registerVehicle = async (req: Request, res: Response) => {
   try {
@@ -23,9 +24,6 @@ export const registerVehicle = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Vehicle registration failed', details: error });
   }
 };
-
-
-
 //GET /vehicles
 export const getAllVehicles = async (_req: Request, res: Response) => {
   try {
@@ -35,8 +33,6 @@ export const getAllVehicles = async (_req: Request, res: Response) => {
     res.status(500).json({ error: 'Could not fetch vehicles' });
   }
 };
-
-
 // PUT /vehicles/:id
 export const updateVehicle = async (req: Request, res: Response) => {
   try {
@@ -49,7 +45,6 @@ export const updateVehicle = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Vehicle update failed' });
   }
 };
-
 // DELETE /vehicles/:id
 export const deleteVehicle = async (req: Request, res: Response) => {
   try {
@@ -72,7 +67,6 @@ export const assignDriver = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to assign driver' });
   }
 };
-
 // GET /vehicles/driver/:driverId
 export const getVehiclesByDriver = async (req: Request, res: Response) => {
   try {
@@ -84,7 +78,6 @@ export const getVehiclesByDriver = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Error fetching vehicles for driver' });
   }
 };
-
 // GET /vehicles/manager/:managerId
 export const getVehiclesByManager = async (req: Request, res: Response) => {
   try {
