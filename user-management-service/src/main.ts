@@ -133,6 +133,12 @@ async function deleteUser(userId: string, adminToken: string) {
     headers: { Authorization: `Bearer ${adminToken}` },
   });
 }
+async function getUserRoles(userId: string, adminToken: string): Promise<string[]> {
+  const res = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}/role-mappings/realm`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  return res.data.map((role: any) => role.name);
+}
 
 async function createUser(username: string, password: string, adminToken: string ,firstName = "DefaultFirst",lastName = "DefaultLast"): Promise<string> {
   await axios.post(
@@ -646,58 +652,63 @@ app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Reques
     const kcUser = (req as any).user as KeycloakDecodedToken;
     const requesterRoles = kcUser.realm_access?.roles || [];
 
-    if (requesterRoles.includes('Super_Admin')) {
-      // Super_Admin can delete any user directly
-      await deleteUser(userId, adminToken);
-      res.json({ message: 'User deleted successfully by Super_Admin' });
-    }
+    // Get target user's roles
+    const targetRoles = await getUserRoles(userId, adminToken);
 
+    // Check target user's group/org for Admin role restriction
     if (requesterRoles.includes('Admin')) {
-      // Admin can delete only users in their org
       const requesterId = kcUser.sub;
 
-      // Fetch target user groups
       const targetGroups = await getUserGroups(userId, adminToken);
       const targetOrg = targetGroups.find(g => g.startsWith('/'));
 
-      if (!targetOrg) {
-        res.status(400).json({ error: 'Target user has no org group' });
-        return;
-      }
-
-      // Ensure requesterId is defined
       if (!requesterId) {
-        res.status(400).json({ error: 'Requester ID is missing' });
+        res.status(400).json({ error: 'Requester ID is missing in token' });
         return;
       }
 
-      // Fetch admin groups
       const adminGroups = await getUserGroups(requesterId, adminToken);
       const adminOrg = adminGroups.find(g => g.startsWith('/'));
 
-      if (!adminOrg) {
-        res.status(400).json({ error: 'Admin has no org group' });
-        return;
-      }
-
-      if (targetOrg.split('/')[1] !== adminOrg.split('/')[1]) {
+      if (!targetOrg || !adminOrg || targetOrg.split('/')[1] !== adminOrg.split('/')[1]) {
         res.status(403).json({ error: 'You cannot delete a user from another org' });
         return;
       }
-
-      // Delete user
-      await deleteUser(userId, adminToken);
-      res.json({ message: 'User deleted successfully by Admin in their org' });
-      return;
     }
 
-    // Should not reach here
-    res.status(403).json({ error: 'Forbidden' });
+    // --- Check pre-conditions ---
+    if (targetRoles.includes('Admin')) {
+      const assignedManagers = await prisma.adminManager.findMany({ where: { adminKcId: userId } });
+      if (assignedManagers.length > 0) {
+        res.status(400).json({ error: 'Reassign or remove all managers under this admin before deleting' });
+        return;
+      }
+    }
+
+    if (targetRoles.includes('Manager')) {
+      const assignedDrivers = await prisma.managerDriver.findMany({ where: { managerKcId: userId } });
+      if (assignedDrivers.length > 0) {
+        res.status(400).json({ error: 'Reassign or remove all drivers under this manager before deleting' });
+        return;
+      }
+    }
+
+    // --- Remove local relations ---
+    await prisma.adminManager.deleteMany({ where: { adminKcId: userId } });
+    await prisma.adminManager.deleteMany({ where: { managerKcId: userId } });
+    await prisma.managerDriver.deleteMany({ where: { managerKcId: userId } });
+    await prisma.managerDriver.deleteMany({ where: { driverKcId: userId } });
+
+    // --- Delete user from Keycloak ---
+    await deleteUser(userId, adminToken);
+
+    res.json({ message: 'User deleted successfully, and all relations removed' });
   } catch (error: any) {
-    console.error('Error deleting user:', error);
+    console.error('Error deleting user:', error?.response?.data || error.message);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
+
 
 
 const PORT = process.env.PORT || 3000;
