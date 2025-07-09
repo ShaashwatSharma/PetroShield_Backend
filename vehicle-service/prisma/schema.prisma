@@ -10,7 +10,7 @@ datasource db {
 model Vehicle {
   id                 String    @id @default(uuid())
   name               String
-  registrationNumber String    // <-- make required if always present
+  registrationNumber String    @unique
   driverKcId         String?
   managerKcId        String?
   organizationId     String

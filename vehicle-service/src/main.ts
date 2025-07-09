@@ -82,13 +82,13 @@ app.get('/vehicles', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
 
-    if (user?.roles.includes('superadmin')) {
+    if (user?.roles.includes('Super_Admin')) {
       const vehicles = await prisma.vehicle.findMany();
       res.json(vehicles);
       return;
     }
 
-    if (user?.roles.includes('admin')) {
+    if (user?.roles.includes('Admin')) {
       const vehicles = await prisma.vehicle.findMany({
         where: { organizationId: user.organizationId },
       });
@@ -96,7 +96,7 @@ app.get('/vehicles', async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    if (user?.roles.includes('manager')) {
+    if (user?.roles.includes('Manager')) {
       const vehicles = await prisma.vehicle.findMany({
         where: { managerKcId: user.kcId },
       });
@@ -104,7 +104,7 @@ app.get('/vehicles', async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    if (user?.roles.includes('driver')) {
+    if (user?.roles.includes('Driver')) {
       const vehicles = await prisma.vehicle.findMany({
         where: { driverKcId: user.kcId },
       });
@@ -117,7 +117,7 @@ app.get('/vehicles', async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch vehicles' });
   }
 });
-
+//checked
 app.get('/vehicles/:id', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
@@ -127,10 +127,10 @@ app.get('/vehicles/:id', async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    if (user?.roles.includes('superadmin')
-      || (user?.roles.includes('admin') && vehicle.organizationId === user.organizationId)
-      || (user?.roles.includes('manager') && vehicle.managerKcId === user.kcId)
-      || (user?.roles.includes('driver') && vehicle.driverKcId === user.kcId)
+    if (user?.roles.includes('Super_Admin')
+      || (user?.roles.includes('Admin') && vehicle.organizationId === user.organizationId)
+      || (user?.roles.includes('Manager') && vehicle.managerKcId === user.kcId)
+      || (user?.roles.includes('Driver') && vehicle.driverKcId === user.kcId)
     ) {
       res.json(vehicle);
       return;
@@ -141,11 +141,11 @@ app.get('/vehicles/:id', async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch vehicle' });
   }
 });
-
-app.post('/vehicles', requireRole(['superadmin', 'admin']), async (req: AuthenticatedRequest, res: Response) => {
+//checked
+app.post('/vehicles', requireRole(['Super_Admin', 'Admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { name, registrationNumber } = req.body;
-    const organizationId = req.user?.organizationId ?? '';
+    const { name, registrationNumber ,organizationId} = req.body;
+    // const organizationId = req.user.organizationId ;
 
     const vehicle = await prisma.vehicle.create({
       data: { name, registrationNumber, organizationId },
@@ -155,8 +155,8 @@ app.post('/vehicles', requireRole(['superadmin', 'admin']), async (req: Authenti
     res.status(500).json({ error: 'Failed to register vehicle' });
   }
 });
-
-app.put('/vehicles/:id', requireRole(['superadmin', 'admin']), async (req: AuthenticatedRequest, res: Response) => {
+//checked
+app.put('/vehicles/:id', requireRole(['Super_Admin', 'Admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
     const vehicle = await prisma.vehicle.findUnique({ where: { id: req.params.id } });
@@ -165,7 +165,7 @@ app.put('/vehicles/:id', requireRole(['superadmin', 'admin']), async (req: Authe
       return;
     }
 
-    if (user?.roles.includes('admin') && vehicle.organizationId !== user.organizationId) {
+    if (user?.roles.includes('Admin') && vehicle.organizationId !== user.organizationId) {
       res.status(403).json({ error: 'Cannot update vehicle from another org' });
       return;
     }
@@ -179,8 +179,8 @@ app.put('/vehicles/:id', requireRole(['superadmin', 'admin']), async (req: Authe
     res.status(500).json({ error: 'Failed to update vehicle' });
   }
 });
-
-app.delete('/vehicles/:id', requireRole(['superadmin', 'admin']), async (req: AuthenticatedRequest, res: Response) => {
+//checked
+app.delete('/vehicles/:id', requireRole(['Super_Admin', 'Admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
     const vehicle = await prisma.vehicle.findUnique({ where: { id: req.params.id } });
@@ -189,7 +189,9 @@ app.delete('/vehicles/:id', requireRole(['superadmin', 'admin']), async (req: Au
       return;
     }
 
-    if (user?.roles.includes('admin') && vehicle.organizationId !== user.organizationId) {
+    if (user?.roles.includes('Admin') && vehicle.organizationId !== user.organizationId) {
+      console.log(user.organizationId);
+      console.log(vehicle.organizationId);
       res.status(403).json({ error: 'Cannot delete vehicle from another org' });
       return;
     }
@@ -201,7 +203,7 @@ app.delete('/vehicles/:id', requireRole(['superadmin', 'admin']), async (req: Au
   }
 });
 
-app.post('/vehicles/:id/assign-driver', requireRole(['superadmin', 'admin', 'manager']), async (req: AuthenticatedRequest, res: Response) => {
+app.post('/vehicles/:id/assign-Driver', requireRole(['Super_Admin', 'Admin', 'Manager']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { driverKcId } = req.body;
     const { user } = req;
@@ -212,13 +214,13 @@ app.post('/vehicles/:id/assign-driver', requireRole(['superadmin', 'admin', 'man
       return;
     }
 
-    if (user?.roles.includes('admin') && vehicle.organizationId !== user.organizationId) {
-      res.status(403).json({ error: 'Cannot assign driver to vehicle from another org' });
+    if (user?.roles.includes('Admin') && vehicle.organizationId !== user.organizationId) {
+      res.status(403).json({ error: 'Cannot assign Driver to vehicle from another org' });
       return;
     }
 
-    if (user?.roles.includes('manager') && vehicle.managerKcId !== user.kcId) {
-      res.status(403).json({ error: 'Cannot assign driver to vehicle not managed by you' });
+    if (user?.roles.includes('Manager') && vehicle.managerKcId !== user.kcId) {
+      res.status(403).json({ error: 'Cannot assign Driver to vehicle not managed by you' });
       return;
     }
 
@@ -228,7 +230,7 @@ app.post('/vehicles/:id/assign-driver', requireRole(['superadmin', 'admin', 'man
     });
     res.json({ message: 'Driver assigned successfully', vehicle: updatedVehicle });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to assign driver' });
+    res.status(500).json({ error: 'Failed to assign Driver' });
   }
 });
 
@@ -238,25 +240,25 @@ app.get('/sensors', async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
 
-    if (user?.roles.includes('superadmin')) {
+    if (user?.roles.includes('Super_Admin')) {
       const sensors = await prisma.sensor.findMany();
       res.json(sensors);
       return;
     }
 
-    if (user?.roles.includes('admin')) {
+    if (user?.roles.includes('Admin')) {
       const sensors = await prisma.sensor.findMany({ where: { organizationId: user.organizationId } });
       res.json(sensors);
       return;
     }
 
-    if (user?.roles.includes('manager')) {
+    if (user?.roles.includes('Manager')) {
       const sensors = await prisma.sensor.findMany({ where: { vehicle: { managerKcId: user.kcId } } });
       res.json(sensors);
       return;
     }
 
-    if (user?.roles.includes('driver')) {
+    if (user?.roles.includes('Driver')) {
       const sensors = await prisma.sensor.findMany({ where: { vehicle: { driverKcId: user.kcId } } });
       res.json(sensors);
       return;
@@ -277,10 +279,10 @@ app.get('/sensors/:id', async (req: AuthenticatedRequest, res: Response) => {
       return;
     }
 
-    if (user?.roles.includes('superadmin')
-      || (user?.roles.includes('admin') && sensor.organizationId === user.organizationId)
-      || (user?.roles.includes('manager') && sensor.vehicle?.managerKcId === user.kcId)
-      || (user?.roles.includes('driver') && sensor.vehicle?.driverKcId === user.kcId)
+    if (user?.roles.includes('Super_Admin')
+      || (user?.roles.includes('Admin') && sensor.organizationId === user.organizationId)
+      || (user?.roles.includes('Manager') && sensor.vehicle?.managerKcId === user.kcId)
+      || (user?.roles.includes('Driver') && sensor.vehicle?.driverKcId === user.kcId)
     ) {
       res.json(sensor);
       return;
@@ -292,7 +294,7 @@ app.get('/sensors/:id', async (req: AuthenticatedRequest, res: Response) => {
   }
 });
 
-app.post('/sensors', requireRole(['superadmin', 'admin']), async (req: AuthenticatedRequest, res: Response) => {
+app.post('/sensors', requireRole(['Super_Admin', 'Admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { name, type, description } = req.body;
     const organizationId = req.user?.organizationId ?? '';
@@ -306,7 +308,7 @@ app.post('/sensors', requireRole(['superadmin', 'admin']), async (req: Authentic
   }
 });
 
-app.post('/sensors/:id/assign-vehicle', requireRole(['superadmin', 'admin']), async (req: AuthenticatedRequest, res: Response) => {
+app.post('/sensors/:id/assign-vehicle', requireRole(['Super_Admin', 'Admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { vehicleId } = req.body;
     const { user } = req;
@@ -339,7 +341,7 @@ app.post('/sensors/:id/assign-vehicle', requireRole(['superadmin', 'admin']), as
   }
 });
 
-app.put('/sensors/:id', requireRole(['superadmin', 'admin']), async (req: AuthenticatedRequest, res: Response) => {
+app.put('/sensors/:id', requireRole(['Super_Admin', 'Admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
     const sensor = await prisma.sensor.findUnique({ where: { id: req.params.id } });
@@ -348,7 +350,7 @@ app.put('/sensors/:id', requireRole(['superadmin', 'admin']), async (req: Authen
       return;
     }
 
-    if (user?.roles.includes('admin') && sensor.organizationId !== user.organizationId) {
+    if (user?.roles.includes('Admin') && sensor.organizationId !== user.organizationId) {
       res.status(403).json({ error: 'Cannot update sensor from another org' });
       return;
     }
@@ -363,7 +365,7 @@ app.put('/sensors/:id', requireRole(['superadmin', 'admin']), async (req: Authen
   }
 });
 
-app.delete('/sensors/:id', requireRole(['superadmin', 'admin']), async (req: AuthenticatedRequest, res: Response) => {
+app.delete('/sensors/:id', requireRole(['Super_Admin', 'Admin']), async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { user } = req;
     const sensor = await prisma.sensor.findUnique({ where: { id: req.params.id } });
@@ -372,7 +374,7 @@ app.delete('/sensors/:id', requireRole(['superadmin', 'admin']), async (req: Aut
       return;
     }
 
-    if (user?.roles.includes('admin') && sensor.organizationId !== user.organizationId) {
+    if (user?.roles.includes('Admin') && sensor.organizationId !== user.organizationId) {
       res.status(403).json({ error: 'Cannot delete sensor from another org' });
       return;
     }
@@ -388,7 +390,7 @@ app.delete('/sensors/:id', requireRole(['superadmin', 'admin']), async (req: Aut
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Vehicle & Sensor Service running on port ${PORT}`);
+  console.log(`Vehicle & Sensor Service running on port ${PORT} or 3002 on Host`);
 });
 
 
