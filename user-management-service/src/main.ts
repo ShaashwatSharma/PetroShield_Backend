@@ -641,12 +641,18 @@ app.get('/org-users', checkRole(['Admin']), async (req: Request, res: Response) 
     res.status(500).json({ error: 'Failed to fetch org users' });
   }
 });
-
 //checked
-app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Request, res: Response) => {
+app.delete('/users/:username', checkRole(['Super_Admin', 'Admin']), async (req: Request, res: Response) => {
   try {
-    const userId = req.params.id;
+    const username = req.params.username;
     const adminToken = await getAdminToken();
+
+    // Get target user's Keycloak ID
+    const userId = await getUserIdByUsername(username, adminToken);
+    if (!userId) {
+      res.status(404).json({ error: 'User not found with provided username' });
+      return;
+    }
 
     const kcUser = (req as any).user as KeycloakDecodedToken;
     const requesterRoles = kcUser.realm_access?.roles || [];
@@ -654,7 +660,7 @@ app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Reques
     // Get target user's roles
     const targetRoles = await getUserRoles(userId, adminToken);
 
-    // Check target user's group/org for Admin role restriction
+    // Check org restriction for Admin
     if (requesterRoles.includes('Admin')) {
       const requesterId = kcUser.sub;
 
@@ -698,7 +704,7 @@ app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Reques
     await prisma.managerDriver.deleteMany({ where: { managerKcId: userId } });
     await prisma.managerDriver.deleteMany({ where: { driverKcId: userId } });
 
-    // --- Delete user from Keycloak ---
+    // --- Delete from Keycloak ---
     await deleteUser(userId, adminToken);
 
     res.json({ message: 'User deleted successfully, and all relations removed' });
@@ -707,6 +713,7 @@ app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Reques
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
+
 
 
 const PORT = process.env.PORT || 3000;

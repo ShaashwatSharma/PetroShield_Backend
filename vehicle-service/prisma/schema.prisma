@@ -8,20 +8,22 @@ datasource db {
 }
 
 model Vehicle {
-  id                String   @id @default(uuid())
-  name              String
-  model             String?
-  registrationNumber String?
-  driverKcId        String? 
-  managerKcId       String?
-  sensors           Sensor[]
+  id                 String    @id @default(uuid())
+  name               String
+  registrationNumber String    // <-- make required if always present
+  driverKcId         String?
+  managerKcId        String?
+  organizationId     String
+  sensors            Sensor[]
+  createdAt          DateTime  @default(now())
 }
 
 model Sensor {
-  id          String   @id @default(uuid())
-  name        String
-  type        String?
-  description String?
-  vehicleId   String?
-  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id])
+  id              String   @id @default(uuid())
+  name            String
+  type            String?
+  description     String?
+  organizationId  String
+  vehicleId       String?
+  vehicle         Vehicle? @relation(fields: [vehicleId], references: [id])
 }
