@@ -164,6 +164,13 @@ async function getRoleByName(roleName: string, adminToken: string) {
   return res.data;
 }
 
+async function getUserRoles(userId: string, adminToken: string): Promise<string[]> {
+  const res = await axios.get(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}/role-mappings/realm`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
+  });
+  return res.data.map((role: any) => role.name);
+}
+
 async function assignRoleToUser(userId: string, role: any, adminToken: string) {
   await axios.post(`${KEYCLOAK_ADMIN_API_URL}/users/${userId}/role-mappings/realm`, [role], {
     headers: { Authorization: `Bearer ${adminToken}` },
@@ -519,14 +526,24 @@ app.get('/my-drivers-as-admin', checkRole(['Admin']), async (req: Request, res: 
       allDriverIds.push(...drivers.map(d => d.driverKcId));
     }
 
-    const drivers = await Promise.all(allDriverIds.map(driverId => getUserById(driverId, adminToken)));
-    res.json(drivers);
+    const drivers = await Promise.all(
+      allDriverIds.map(async (driverId) => {
+        try {
+          return await getUserById(driverId, adminToken);
+        } catch (err) {
+          console.warn(`⚠️ Driver ID not found in Keycloak: ${driverId}`);
+          return null;
+        }
+      })
+    );
+
+    res.json(drivers.filter(Boolean)); // filter out nulls
   } catch (error: any) {
     console.error('Error fetching drivers as admin:', error?.response?.data || error.message);
     res.status(500).json({ error: 'Failed to fetch drivers as admin' });
   }
 });
-
+//checked
 app.get('/my-manager/:managerUsername', checkRole(['Admin']), async (req: Request, res: Response) => {
   try {
     const kcUser = (req as any).user as KeycloakDecodedToken;
@@ -561,8 +578,7 @@ app.get('/my-manager/:managerUsername', checkRole(['Admin']), async (req: Reques
     res.status(500).json({ error: 'Failed to fetch manager and drivers' });
   }
 });
-
-
+//checked
 app.get('/users/:id', checkRole(['Super_Admin', 'Admin', 'Manager', 'Driver']), async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;
@@ -574,14 +590,14 @@ app.get('/users/:id', checkRole(['Super_Admin', 'Admin', 'Manager', 'Driver']), 
     res.status(500).json({ error: 'Failed to fetch user' });
   }
 });
-
+//checked
 app.get('/org-users', checkRole(['Admin']), async (req: Request, res: Response) => {
   try {
     const kcUser = (req as any).user as KeycloakDecodedToken;
     const adminKcId = kcUser.sub;
     const adminToken = await getAdminToken();
 
-    // Find managers under this admin from DB
+    // Get manager IDs from local DB
     const managers = await prisma.adminManager.findMany({ where: { adminKcId } });
 
     let allManagerKcIds: string[] = managers.map(m => m.managerKcId);
@@ -592,20 +608,41 @@ app.get('/org-users', checkRole(['Admin']), async (req: Request, res: Response) 
       allDriverKcIds.push(...drivers.map(d => d.driverKcId));
     }
 
-    // Fetch manager user details from Keycloak
-    const managerDetails = await Promise.all(allManagerKcIds.map(id => getUserById(id, adminToken)));
-    const driverDetails = await Promise.all(allDriverKcIds.map(id => getUserById(id, adminToken)));
+    // Safely fetch manager details
+    const managerDetails = await Promise.all(
+      allManagerKcIds.map(async (id) => {
+        try {
+          return await getUserById(id, adminToken);
+        } catch (err) {
+          console.warn(`⚠️ Manager ID not found in Keycloak: ${id}`);
+          return null;
+        }
+      })
+    );
+
+    // Safely fetch driver details
+    const driverDetails = await Promise.all(
+      allDriverKcIds.map(async (id) => {
+        try {
+          return await getUserById(id, adminToken);
+        } catch (err) {
+          console.warn(`⚠️ Driver ID not found in Keycloak: ${id}`);
+          return null;
+        }
+      })
+    );
 
     res.json({
-      managers: managerDetails,
-      drivers: driverDetails,
+      managers: managerDetails.filter(Boolean), // remove nulls
+      drivers: driverDetails.filter(Boolean),
     });
   } catch (error: any) {
-    console.error('Error fetching org users:', error);
+    console.error('❌ Error fetching org users:', error);
     res.status(500).json({ error: 'Failed to fetch org users' });
   }
 });
 
+//checked
 app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Request, res: Response) => {
   try {
     const userId = req.params.id;
@@ -614,55 +651,59 @@ app.delete('/users/:id', checkRole(['Super_Admin', 'Admin']), async (req: Reques
     const kcUser = (req as any).user as KeycloakDecodedToken;
     const requesterRoles = kcUser.realm_access?.roles || [];
 
-    if (requesterRoles.includes('Super_Admin')) {
-      // Super_Admin can delete any user directly
-      await deleteUser(userId, adminToken);
-      res.json({ message: 'User deleted successfully by Super_Admin' });
-    }
+    // Get target user's roles
+    const targetRoles = await getUserRoles(userId, adminToken);
 
+    // Check target user's group/org for Admin role restriction
     if (requesterRoles.includes('Admin')) {
-      // Admin can delete only users in their org
       const requesterId = kcUser.sub;
 
-      // Fetch target user groups
       const targetGroups = await getUserGroups(userId, adminToken);
       const targetOrg = targetGroups.find(g => g.startsWith('/'));
 
-      if (!targetOrg) {
-        res.status(400).json({ error: 'Target user has no org group' });
-        return;
-      }
-
-      // Ensure requesterId is defined
       if (!requesterId) {
-        res.status(400).json({ error: 'Requester ID is missing' });
+        res.status(400).json({ error: 'Requester ID is missing in token' });
         return;
       }
 
-      // Fetch admin groups
       const adminGroups = await getUserGroups(requesterId, adminToken);
       const adminOrg = adminGroups.find(g => g.startsWith('/'));
 
-      if (!adminOrg) {
-        res.status(400).json({ error: 'Admin has no org group' });
-        return;
-      }
-
-      if (targetOrg.split('/')[1] !== adminOrg.split('/')[1]) {
+      if (!targetOrg || !adminOrg || targetOrg.split('/')[1] !== adminOrg.split('/')[1]) {
         res.status(403).json({ error: 'You cannot delete a user from another org' });
         return;
       }
-
-      // Delete user
-      await deleteUser(userId, adminToken);
-      res.json({ message: 'User deleted successfully by Admin in their org' });
-      return;
     }
 
-    // Should not reach here
-    res.status(403).json({ error: 'Forbidden' });
+    // --- Check pre-conditions ---
+    if (targetRoles.includes('Admin')) {
+      const assignedManagers = await prisma.adminManager.findMany({ where: { adminKcId: userId } });
+      if (assignedManagers.length > 0) {
+        res.status(400).json({ error: 'Reassign or remove all managers under this admin before deleting' });
+        return;
+      }
+    }
+
+    if (targetRoles.includes('Manager')) {
+      const assignedDrivers = await prisma.managerDriver.findMany({ where: { managerKcId: userId } });
+      if (assignedDrivers.length > 0) {
+        res.status(400).json({ error: 'Reassign or remove all drivers under this manager before deleting' });
+        return;
+      }
+    }
+
+    // --- Remove local relations ---
+    await prisma.adminManager.deleteMany({ where: { adminKcId: userId } });
+    await prisma.adminManager.deleteMany({ where: { managerKcId: userId } });
+    await prisma.managerDriver.deleteMany({ where: { managerKcId: userId } });
+    await prisma.managerDriver.deleteMany({ where: { driverKcId: userId } });
+
+    // --- Delete user from Keycloak ---
+    await deleteUser(userId, adminToken);
+
+    res.json({ message: 'User deleted successfully, and all relations removed' });
   } catch (error: any) {
-    console.error('Error deleting user:', error);
+    console.error('Error deleting user:', error?.response?.data || error.message);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });
@@ -672,6 +713,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`user-management-service running on port ${PORT} or 3001 on host`);
 });
+
 
 
 
