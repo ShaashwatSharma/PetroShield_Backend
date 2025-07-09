@@ -1,28 +1,29 @@
 import PDFDocument from 'pdfkit';
-import { Vehicle } from '@prisma/client';
+import { Response } from 'express';
 
-export function generateVehicleReportPDF(vehicles: Vehicle[], res: any) {
+export const streamVehiclePDF = (res: Response, vehicle: any) => {
   const doc = new PDFDocument();
+  const buffers: any[] = [];
 
-  // Set response headers
-  res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', 'attachment; filename=vehicles.pdf');
-
-  doc.pipe(res);
-
-  doc.fontSize(20).text('Vehicle Report', { underline: true });
-  doc.moveDown();
-
-  vehicles.forEach((vehicle, index) => {
-    doc.fontSize(12).text(
-      `${index + 1}. Vehicle ID: ${vehicle.id}
-   Registration: ${vehicle.registration}
-   Org ID: ${vehicle.organizationId}
-   Manager ID: ${vehicle.managerId ?? 'N/A'}
-   Driver ID: ${vehicle.driverId ?? 'N/A'}`
-    );
-    doc.moveDown();
+  doc.on('data', (chunk) => buffers.push(chunk));
+  doc.on('end', () => {
+    const pdfBuffer = Buffer.concat(buffers);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline; filename=vehicle-report.pdf');
+    res.send(pdfBuffer);
   });
 
+  // PDF content
+  doc.fontSize(20).text('Vehicle Report', { align: 'center' });
+  doc.moveDown();
+
+  doc.fontSize(12).text(`ID: ${vehicle.id}`);
+  doc.text(`Registration: ${vehicle.registration}`);
+  doc.text(`Organization ID: ${vehicle.organizationId}`);
+  doc.text(`Driver ID: ${vehicle.driverId ?? 'N/A'}`);
+  doc.text(`Manager ID: ${vehicle.managerId ?? 'N/A'}`);
+  doc.text(`Created At: ${new Date(vehicle.createdAt).toLocaleString()}`);
+
   doc.end();
-}
+};
+

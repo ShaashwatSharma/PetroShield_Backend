@@ -8,11 +8,12 @@
   },
   "dependencies": {
     "@prisma/client": "^6.10.1",
-    "@types/express": "^5.0.3",
+    "@types/jwt-decode": "^2.2.1",
     "axios": "^1.10.0",
     "dotenv": "^17.0.1",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "jwt-decode": "^4.0.0"
   },
   "devDependencies": {
     "@prisma/client": "^6.11.0",

@@ -1,18 +1,18 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { generateVehicleReportPDF } from '../utils/pdfGenerator';
+// import { generateVehicleReportPDF } from '../utils/pdfGenerator';
 
 const prisma = new PrismaClient();
 
-export const generateVehiclesPDF = async (req: Request, res: Response) => {
-  try {
-    const vehicles = await prisma.vehicle.findMany();
-    generateVehicleReportPDF(vehicles, res);
-  } catch (error) {
-    console.error('PDF generation error:', error);
-    res.status(500).json({ error: 'Failed to generate PDF' });
-  }
-};
+// export const generateVehiclesPDF = async (req: Request, res: Response) => {
+//   try {
+//     const vehicles = await prisma.vehicle.findMany();
+//     generateVehicleReportPDF(vehicles, res);
+//   } catch (error) {
+//     console.error('PDF generation error:', error);
+//     res.status(500).json({ error: 'Failed to generate PDF' });
+//   }
+// };
 
 // GET /vehicles/:id
 export const getVehicleById = async (req: Request, res: Response) => {

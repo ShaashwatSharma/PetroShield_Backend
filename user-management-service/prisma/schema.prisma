@@ -8,16 +8,38 @@ datasource db {
 }
 
 model Organization {
-  id          String     @id @default(uuid())
-  name        String
-  createdAt   DateTime   @default(now())
+  id        String     @id @default(uuid())
+  name      String
+  createdAt DateTime   @default(now())
+
+  admins    OrganizationAdmin[]
+}
+
+model OrganizationAdmin {
+  id              String   @id @default(uuid())
+  organizationId  String
+  adminKcId       String
+
+  organization    Organization @relation(fields: [organizationId], references: [id])
+}
+
+model AdminManager {
+  id          String @id @default(uuid())
+  adminKcId   String
+  managerKcId String
+}
+
+model ManagerDriver {
+  id          String @id @default(uuid())
+  managerKcId String
+  driverKcId  String
 }
 
 model DriverVehicleAssignment {
-  id             String     @id @default(uuid())
-  userId         String     // Keycloak user ID
+  id             String   @id @default(uuid())
+  userId         String   // Keycloak user ID (driver)
   vehicleId      String
   organizationId String
-  assignedAt     DateTime   @default(now())
+  assignedAt     DateTime @default(now())
   unassignedAt   DateTime?
 }

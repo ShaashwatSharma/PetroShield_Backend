@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3003;
 
 
 app.listen(3000, () => {
-  console.log('vehicle-service running on port 3000');
+  console.log('vehicle-service running on port 3000 or 3002');
 });
 
 

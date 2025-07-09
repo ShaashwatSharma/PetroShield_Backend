@@ -1,19 +1,22 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-var mqtt_1 = require("mqtt");
+const mqtt_1 = __importDefault(require("mqtt"));
 // ⚡ Configure your MQTT broker URL
-var brokerUrl = 'mqtt://localhost:1883'; // Change if needed
+const brokerUrl = 'mqtt://localhost:1883'; // Change if needed
 // Connect
-var client = mqtt_1.default.connect(brokerUrl);
-client.on('connect', function () {
+const client = mqtt_1.default.connect(brokerUrl);
+client.on('connect', () => {
     console.log('Simulator connected to MQTT broker');
     // Simulate sending data every 3 seconds
-    setInterval(function () {
+    setInterval(() => {
         // Create random fake data
-        var data = {
-            sensorId: "sensor-".concat(Math.floor(Math.random() * 5 + 1)),
-            vehicleId: "vehicle-".concat(Math.floor(Math.random() * 5 + 1)),
-            userId: "user-".concat(Math.floor(Math.random() * 3 + 1)),
+        const data = {
+            sensorId: `sensor-${Math.floor(Math.random() * 5 + 1)}`,
+            vehicleId: `vehicle-${Math.floor(Math.random() * 5 + 1)}`,
+            userId: `user-${Math.floor(Math.random() * 3 + 1)}`,
             fuelLevel: parseFloat((Math.random() * 100).toFixed(2)),
             latitude: 28.61 + Math.random() * 0.01,
             longitude: 77.20 + Math.random() * 0.01
@@ -23,7 +26,7 @@ client.on('connect', function () {
         console.log('Published simulated data:', data);
     }, 3000);
 });
-client.on('error', function (err) {
+client.on('error', (err) => {
     console.error('MQTT Simulator error:', err);
     client.end();
 });

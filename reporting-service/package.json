@@ -10,9 +10,11 @@
     "@types/express": "^5.0.3",
     "axios": "^1.10.0",
     "express": "^5.1.0",
-    "puppeteer": "^24.11.1"
+    "mustache": "^4.2.0",
+    "puppeteer": "^24.11.2"
   },
   "devDependencies": {
+    "@types/mustache": "^4.2.6",
     "@types/node": "^20.0.0",
     "prisma": "^6.10.1",
     "ts-node": "^10.0.0",

@@ -1,6 +1,15 @@
 import jwt from "jsonwebtoken";
 import { Request, Response, NextFunction } from "express";
 
+// Extend Express Request interface to include 'user'
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
+
 export default (req: Request, res: Response, next: NextFunction) => {
   const bearerHeader = req.headers["authorization"];
   if (!bearerHeader) return res.sendStatus(401);
@@ -21,4 +30,4 @@ export default (req: Request, res: Response, next: NextFunction) => {
     console.error("Token verification failed:", error);
     return res.sendStatus(403);
   }
-};
+}
