@@ -11,6 +11,7 @@ app.use(express.json());
 
 const prisma = new PrismaClient();
 
+
 interface KeycloakDecodedToken {
   realm_access?: { roles: string[] };
   groups?: string[];
