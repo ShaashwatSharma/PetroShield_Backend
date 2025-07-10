@@ -10,12 +10,18 @@ declare global {
   }
 }
 
-export default (req: Request, res: Response, next: NextFunction) => {
+const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const bearerHeader = req.headers["authorization"];
-  if (!bearerHeader) return res.sendStatus(401);
+  if (!bearerHeader) { 
+    res.sendStatus(401);
+    return;
+  }
 
   const token = bearerHeader.split(" ")[1];
-  if (!token) return res.sendStatus(401);
+  if (!token) {
+     res.sendStatus(401);
+     return;
+  }
 
   const publicKey = `-----BEGIN PUBLIC KEY-----\n${process.env.KEYCLOAK_PUBLIC_KEY}\n-----END PUBLIC KEY-----`;
 
@@ -28,6 +34,9 @@ export default (req: Request, res: Response, next: NextFunction) => {
     next();
   } catch (error) {
     console.error("Token verification failed:", error);
-    return res.sendStatus(403);
+     res.sendStatus(403);
+     return;
   }
-}
+};
+
+export default authenticateToken;

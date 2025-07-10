@@ -1,31 +1,23 @@
-// import{ Router } from 'express';
-// import express from 'express';
+import express from 'express';
+import {
+  getAllVehicles,
+  getVehicleById,
+  createVehicle,
+  updateVehicle,
+  deleteVehicle,
+  assignDriver
+} from '../controllers/vehicleController';
+import { authenticateToken, requireRole } from '../middleware/authMiddleware';
 
-// import {registerVehicle,getVehicleById,getAllVehicles,updateVehicle,deleteVehicle,assignDriver,getVehiclesByDriver,getVehiclesByManager} from './vehicleController';
+const router = express.Router();
 
+router.use(authenticateToken);
 
-// // const router: Router = express.Router(); 
+router.get('/', getAllVehicles);
+router.get('/:id', getVehicleById);
+router.post('/', requireRole(['Super_Admin', 'Admin']), createVehicle);
+router.put('/:id', requireRole(['Super_Admin', 'Admin']), updateVehicle);
+router.delete('/:id', requireRole(['Super_Admin', 'Admin']), deleteVehicle);
+router.post('/:id/assign-driver', requireRole(['Super_Admin', 'Admin', 'Manager']), assignDriver);
 
-// const router: Router = express.Router(); 
-
-// router.post('/', registerVehicle);
-// router.get('/', getAllVehicles);
-// router.get('/:id', getVehicleById);
-
-
-
-// router.post('/', registerVehicle);
-// router.get('/', getAllVehicles);
-// router.get('/driver/:driverId', getVehiclesByDriver);
-// router.get('/manager/:managerId', getVehiclesByManager);
-// router.post('/:id/assign-driver', assignDriver);
-// // router.get('/pdf', generateVehiclesPDF);
-
-
-// // router.get('/:id/pdf', getVehicleReportPDF); 
-// // router.get('/:id', getVehicleById);
-// router.put('/:id', updateVehicle);
-// router.delete('/:id', deleteVehicle);
-
-// export default router;
-
+export default router;
