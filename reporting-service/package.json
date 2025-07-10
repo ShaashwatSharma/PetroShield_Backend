@@ -6,6 +6,7 @@
     "build": "tsc"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.844.0",
     "@prisma/client": "^6.10.1",
     "@types/express": "^5.0.3",
     "axios": "^1.10.0",

@@ -1,5 +1,6 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import { pollAlertQueue } from './consumer';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -34,6 +35,10 @@ app.get('/notify', async (_, res) => {
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 });
+
+setInterval(() => {
+  pollAlertQueue().catch(console.error);
+}, 5000); // poll every 5s
 
 app.listen(3000, () => {
   console.log('notification-service running on port 3000 or 3003 on Host');

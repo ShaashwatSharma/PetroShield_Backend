@@ -5,6 +5,7 @@
     "dev": "ts-node src/main.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.844.0",
     "@prisma/client": "^6.10.1",
     "express": "^4.21.2"
   },
