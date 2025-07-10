@@ -1,9 +1,7 @@
 import { ReceiveMessageCommand, DeleteMessageCommand } from "@aws-sdk/client-sqs";
 import { sqsClient } from "./sqsClient";
 
-const queueUrl = "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/fuel-alert-queue";
-export const ALERT_QUEUE_URL = queueUrl; // Use this in your SQS client configuration 
-// const ALERT_QUEUE_URL = process.env.ALERT_QUEUE_URL!;
+const ALERT_QUEUE_URL = process.env.ALERT_QUEUE_URL!;
 
 export async function pollAlertQueue() {
   const command = new ReceiveMessageCommand({
@@ -18,7 +16,7 @@ export async function pollAlertQueue() {
     for (const msg of response.Messages) {
       console.log("📥 Received alert message:", msg.Body);
 
-      // process it here (e.g., send push notification)
+                    // process it here (e.g., send push notification) our work here 
 
       // Delete message after processing
       await sqsClient.send(new DeleteMessageCommand({

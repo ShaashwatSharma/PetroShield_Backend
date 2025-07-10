@@ -79,7 +79,6 @@ async function handleIncomingSensorData(data: {
       orgId: mlResult.orgId,
     });
   }
-
   // Always send refined data to Report Service
   await sendReportMessage({
     vehicleId: mlResult.vehicleId,

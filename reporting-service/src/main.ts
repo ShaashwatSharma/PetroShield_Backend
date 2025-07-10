@@ -1,6 +1,7 @@
 import express from 'express';
 import axios from 'axios';
 import { PrismaClient } from '@prisma/client';
+import { pollReportQueue } from './consumer';
 
 const app = express();
 const prisma = new PrismaClient();
@@ -58,6 +59,12 @@ app.get('/reports/driver/:driverId', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch driver report' });
   }
 });
+
+
+setInterval(() => {
+  pollReportQueue().catch(console.error);
+}, 5000); // poll every 5s
+
 
 app.listen(3000, () => {
   console.log('reporting-service running on port 3000 or 3004 on Host');

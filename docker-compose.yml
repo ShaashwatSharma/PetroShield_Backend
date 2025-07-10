@@ -116,13 +116,14 @@ volumes:
   localstack_data:
 
 
-#The following lines are used to create SQS queues in LocalStack
-
+# # To create the queues, run the following commands in your terminal: 
 # aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name fuel-alert-queue
 # aws --endpoint-url=http://localhost:4566 sqs create-queue --queue-name fuel-report-queue
+# aws --endpoint-url=http://localhost:4566 sqs list-queues  # to check if queues are created
 
 
-
+#connect to databse using psql
+#docker exec -it petroshield-db psql -U user -d defaultdb
 
 
 # version: '3.9'

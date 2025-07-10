@@ -16,7 +16,7 @@ export async function pollReportQueue() {
     for (const msg of response.Messages) {
       console.log("📥 Received report message:", msg.Body);
 
-      // process here (e.g., generate PDF, update DB)
+                  // process here (e.g., generate PDF, update DB) our work here
 
       await sqsClient.send(new DeleteMessageCommand({
         QueueUrl: REPORT_QUEUE_URL,
